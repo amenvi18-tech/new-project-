@@ -2,6 +2,8 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 name: Node.js CICD
 
+name: Node.js CICD
+
 on:
   push:
     branches: [ main ]
@@ -18,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '23'   # adjust version as needed as per your Jenkins setup
+          node-version: '23'   # adjust version as needed
 
       - name: Frontend Compilation (Syntax Check)
         run: |
@@ -40,4 +42,40 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         with:
           args: detect --source . --no-banner
+        continue-on-error: true
 
+  trivy-fs-scan:
+    runs-on: agent-1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy FS scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+  sonar-frontend:
+    runs-on: agent-1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+
+      - name: Install dependencies (Frontend)
+        run: |
+          cd client
+          npm install
+
+      - name: Run SonarQube analysis
+        uses: SonarSource/sonarcloud-github-action@v2.2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: client
